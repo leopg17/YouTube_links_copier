@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Links Copier</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📺 YouTube Links Copier</h1>
+      <p class="subtitle">Extrae y copia enlaces de videos de YouTube</p>
+    </header>
+
+    <div class="controls">
+      <button id="refreshBtn" class="btn btn-primary" title="Actualizar lista">
+        🔄 Actualizar
+      </button>
+      <button id="selectAllBtn" class="btn btn-secondary" title="Seleccionar todos">
+        ✅ Seleccionar todo
+      </button>
+      <button id="deselectAllBtn" class="btn btn-secondary" title="Deseleccionar todos">
+        ❌ Deseleccionar todo
+      </button>
+    </div>
+
+    <div class="options">
+      <label class="checkbox-label">
+        <input type="checkbox" id="copyWithTitle" checked>
+        <span>Copiar título + URL (desmarca para solo URL)</span>
+      </label>
+    </div>
+
+    <div class="stats">
+      <span id="videoCount">0 videos encontrados</span>
+      <span id="selectedCount">0 seleccionados</span>
+    </div>
+
+    <div class="video-list-container">
+      <div id="videoList" class="video-list">
+        <div class="loading">Cargando videos...</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="copyBtn" class="btn btn-success btn-large" title="Copiar URLs seleccionadas">
+        📋 Copiar Seleccionados
+      </button>
+    </div>
+
+    <!-- Modal de fallback para portapapeles -->
+    <div id="fallbackModal" class="modal hidden">
+      <div class="modal-content">
+        <h3>⚠️ No se pudo copiar automáticamente</h3>
+        <p>Por favor, copia manualmente el texto siguiente:</p>
+        <textarea id="fallbackText" readonly></textarea>
+        <div class="modal-actions">
+          <button id="closeModalBtn" class="btn btn-secondary">Cerrar</button>
+          <button id="copyFromFallbackBtn" class="btn btn-primary">Intentar copiar de nuevo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mensaje de error -->
+    <div id="errorMessage" class="error-message hidden"></div>
+    
+    <!-- Mensaje de éxito -->
+    <div id="successMessage" class="success-message hidden">
+      ✅ ¡URLs copiadas al portapapeles!
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
