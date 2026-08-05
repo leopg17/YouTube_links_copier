@@ -323,3 +323,32 @@ header h1 {
 .video-list-container::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Playlist info styles */
+.playlist-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #856404;
+}
+
+.playlist-info.hidden {
+  display: none;
+}
+
+.playlist-icon {
+  font-size: 16px;
+}
+
+.playlist-text strong {
+  font-family: monospace;
+  background-color: rgba(255, 193, 7, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+}

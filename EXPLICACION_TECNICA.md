@@ -11,20 +11,28 @@ La extensión utiliza un **Content Script** que se inyecta en las páginas de Yo
    const links = document.querySelectorAll('a[href]');
    ```
 
-2. **Filtrar y normalizar URLs de YouTube**:
+2. **Detectar si estamos en una playlist**:
+   - Se extrae el parámetro `list` de la URL actual
+   - Si existe, se filtra para solo incluir videos de esa playlist
+   ```javascript
+   const currentPlaylistId = getCurrentPlaylistId(); // Ej: "PLangBM27OtEA..."
+   ```
+
+3. **Filtrar y normalizar URLs de YouTube**:
    - Se analiza cada URL para identificar patrones de YouTube
    - Se extrae el ID del video (11 caracteres alfanuméricos)
-   - Se convierte a formato estándar: `https://www.youtube.com/watch?v=VIDEO_ID`
+   - Se preserva el ID de playlist si existe
+   - Se convierte a formato estándar: `https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID`
 
-3. **Eliminar duplicados usando un Map**:
+4. **Eliminar duplicados usando un Map**:
    ```javascript
-   const videoMap = new Map(); // Clave = URL normalizada
+   const videoMap = new Map(); // Clave = URL normalizada completa
    if (!videoMap.has(normalizedUrl)) {
      videoMap.set(normalizedUrl, videoData);
    }
    ```
 
-4. **Extraer títulos asociados**:
+5. **Extraer títulos asociados**:
    - Busca elementos con clases como `#video-title`, `.yt-simple-endpoint`
    - Navega por el DOM padre para encontrar metadatos
 
@@ -32,11 +40,20 @@ La extensión utiliza un **Content Script** que se inyecta en las páginas de Yo
 
 | Formato | Ejemplo | Conversión |
 |---------|---------|------------|
-| watch?v= | `youtube.com/watch?v=dQw4w9WgXcQ` | ✅ Mantiene |
-| youtu.be | `youtu.be/dQw4w9WgXcQ` | ✅ Convierte a watch?v= |
+| watch?v= | `youtube.com/watch?v=dQw4w9WgXcQ` | ✅ Mantiene + agrega list si existe |
+| watch?v=+list | `youtube.com/watch?v=dQw4w9WgXcQ&list=PL...` | ✅ Mantiene ambos |
+| youtu.be | `youtu.be/dQw4w9WgXcQ` | ✅ Convierte a watch?v= + list |
 | /shorts/ | `youtube.com/shorts/dQw4w9WgXcQ` | ✅ Convierte a watch?v= |
-| /embed/ | `youtube.com/embed/dQw4w9WgXcQ` | ✅ Convierte a watch?v= |
+| /embed/ | `youtube.com/embed/dQw4w9WgXcQ` | ✅ Convierte a watch?v= + list |
 | /v/ | `youtube.com/v/dQw4w9WgXcQ` | ✅ Convierte a watch?v= |
+
+### Filtrado por Playlist
+
+Cuando estás en una página con parámetro `list=` en la URL:
+- URL ejemplo: `https://www.youtube.com/watch?v=6YnLB0XbTnI&list=PLangBM27OtEA`
+- La extensión detecta `PLangBM27OtEA` como playlist activa
+- Solo incluye videos que tienen ese mismo `list=` en sus enlaces
+- Esto evita mezclar videos de otras playlists o sugerencias
 
 ---
 
@@ -157,43 +174,76 @@ Nuestra extensión: ~500 URLs × 50 caracteres = ~25 KB ✅
 
 ## Pruebas Manuales
 
-### Test 1: Playlist
+### Test 1: Playlist desde un video específico (NUEVO)
+```
+URL: https://www.youtube.com/watch?v=6YnLB0XbTnI&list=PLangBM27OtEA
+1. Abre la URL que contiene un video + parámetro list=
+2. La extensión detectará automáticamente la playlist
+3. Verifica que solo muestra videos de esa playlist específica
+4. Cada URL copiada incluirá &list=PLangBM27OtEA
+5. El popup mostrará una alerta amarilla con el ID de la playlist
+```
+
+### Test 2: Playlist completa
 ```
 URL: https://www.youtube.com/playlist?list=PL...
 1. Haz scroll para cargar todos los videos
 2. Abre extensión
-3. Copia y verifica formato
+3. Verifica que todas las URLs incluyen el parámetro list=
+4. Copia y verifica formato en NotebookLM
 ```
 
-### Test 2: Shorts
+### Test 3: Shorts
 ```
 URL: https://www.youtube.com/shorts
 1. Verifica conversión a watch?v=
+2. Si hay list=, verifica que se preserve
 ```
 
-### Test 3: Búsqueda
+### Test 4: Búsqueda
 ```
 URL: https://www.youtube.com/results?search_query=...
 1. Scroll para cargar resultados
 2. Verifica detección múltiple
+3. No hay list=, así que URLs van sin parámetro adicional
 ```
 
-### Test 4: Duplicados
+### Test 5: Duplicados
 ```
 1. Página con videos repetidos
 2. Verifica eliminación automática
+3. Mismo video en diferentes formatos = 1 sola entrada
+```
+
+### Test 6: youtu.be con playlist
+```
+URL: https://youtu.be/dQw4w9WgXcQ?list=PL...
+1. Verifica conversión a youtube.com/watch?v=
+2. Verifica preservación del parámetro list=
 ```
 
 ---
 
 ## Limitaciones
 
-1. **Scroll necesario**: YouTube usa lazy loading
-2. **Shadow DOM**: Algunos elementos no accesibles
-3. **Anuncios**: Pueden detectarse como videos
-4. **Máximo ~500 videos**: Límite de rendimiento
-5. **YouTube Music**: No compatible
-6. **Títulos faltantes**: Algunos muestran "Video N"
+1. **Scroll necesario**: YouTube usa lazy loading - debes hacer scroll para cargar todos los videos de la playlist
+2. **Shadow DOM**: Algunos elementos pueden no ser accesibles
+3. **Anuncios**: Los videos patrocinados pueden detectarse como parte del contenido
+4. **Máximo ~500 videos**: Límite práctico de rendimiento en playlists muy grandes
+5. **YouTube Music**: No completamente compatible (estructura DOM diferente)
+6. **Títulos faltantes**: Algunos videos pueden mostrar "Video N" si no se encuentra el título
+7. **Filtrado por playlist**: Solo funciona cuando el parámetro `list=` está presente en la URL actual
+8. **Videos sugeridos**: En páginas de video individual, puede incluir videos de la sección "A continuación" si comparten el mismo list=
+
+### Nota importante sobre playlists
+
+La extensión **NO** carga automáticamente todos los videos de una playlist desde la API de YouTube. Solo detecta los enlaces presentes en el DOM actual. Esto significa que:
+
+- ✅ Debes hacer scroll hasta el final de la playlist para cargar todos los videos
+- ✅ Solo se extraerán los videos cuyos enlaces estén visibles en el DOM
+- ✅ Si la playlist tiene 100 videos pero solo cargaste 20, solo obtendrás 20
+
+Esta limitación es intencional para mantener la extensión sin dependencias de APIs externas.
 
 ---
 
