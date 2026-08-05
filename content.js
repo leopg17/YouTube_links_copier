@@ -79,36 +79,27 @@ function normalizeYouTubeUrl(url, targetPlaylistId = null) {
 
 /**
  * Extrae el título de un video desde su contenedor.
- * Prioriza span#video-title con atributo title para playlists.
+ * Soporta los elementos de título usados en playlists, búsquedas y grids.
  */
 function extractVideoTitle(container) {
-  // Estrategia 1: Buscar el selector específico para playlists (span#video-title)
-  const titleElement = container.querySelector('span#video-title');
-  
-  if (titleElement) {
-    // Priorizar el atributo 'title' (suele ser más limpio y completo)
-    const titleAttr = titleElement.getAttribute('title');
-    if (titleAttr && titleAttr.trim()) {
-      return titleAttr.trim();
-    }
-    // Fallback al texto visible
-    const textContent = titleElement.textContent?.trim();
-    if (textContent) {
-      return textContent;
-    }
-  }
+  if (!container) return null;
 
-  // Estrategia 2: Fallback para otras vistas (grid, search, home)
-  const fallbackSelectors = [
+  // YouTube usa el mismo id tanto en enlaces como en spans, según la vista.
+  // `querySelector` no incluye el propio contenedor, por lo que hay que
+  // comprobarlo explícitamente cuando el enlace escaneado ya es el título.
+  const titleSelectors = [
+    'a#video-title-link',
     'a#video-title',
+    'span#video-title',
+    'yt-formatted-string#video-title',
     'h3.yt-lockup-title a',
     '.yt-simple-endpoint.style-scope.ytd-video-meta-block'
   ];
 
-  for (const selector of fallbackSelectors) {
-    const el = container.querySelector(selector);
+  for (const selector of titleSelectors) {
+    const el = container.matches?.(selector) ? container : container.querySelector(selector);
     if (el) {
-      const text = el.getAttribute('title') || el.textContent;
+      const text = el.getAttribute('title') || el.textContent || el.getAttribute('aria-label');
       if (text && text.trim()) {
         return text.trim();
       }
@@ -133,33 +124,48 @@ function extractYouTubeLinks() {
     const normalizedUrl = normalizeYouTubeUrl(href, currentPlaylistId);
     if (!normalizedUrl) return;
 
-    // Extraer título usando la función dedicada
+    // Extraer título usando la función dedicada. Muchos enlaces encontrados son
+    // miniaturas; el título es un elemento hermano dentro del renderer completo.
     let title = extractVideoTitle(link);
 
     // Si no hay título en el enlace directo, buscar en elementos padre
     if (!title) {
-      const parentContainer = link.closest('ytd-thumbnail, .video-thumb, .playlist-video, ytd-playlist-panel-video-renderer');
+      const parentContainer = link.closest([
+        'ytd-rich-item-renderer',
+        'ytd-video-renderer',
+        'ytd-grid-video-renderer',
+        'ytd-compact-video-renderer',
+        'ytd-playlist-video-renderer',
+        'ytd-playlist-panel-video-renderer',
+        'ytd-reel-item-renderer',
+        '.playlist-video',
+        '.video-thumb'
+      ].join(', '));
       if (parentContainer) {
         title = extractVideoTitle(parentContainer);
       }
     }
 
-    // Si aún no hay título, usar un título genérico con el índice
-    if (!title) {
-      title = `Video ${videoMap.size + 1}`;
-    }
-
-    // Guardar en el mapa (elimina duplicados automáticamente)
+    // El mismo video suele aparecer varias veces en el DOM (miniatura, título,
+    // menú, etc.). Si la primera aparición no tenía título, permitir que una
+    // aparición posterior complete el registro en lugar de conservar "Video N".
     if (!videoMap.has(normalizedUrl)) {
       videoMap.set(normalizedUrl, {
         url: normalizedUrl,
         title: title,
         videoId: normalizedUrl.split('v=')[1].split('&')[0] // Extraer solo el videoId sin parámetros adicionales
       });
+    } else if (!videoMap.get(normalizedUrl).title && title) {
+      videoMap.get(normalizedUrl).title = title;
     }
   });
 
-  return Array.from(videoMap.values());
+  // Usar el nombre genérico solo después de haber procesado todas las
+  // apariciones del video y agotado las oportunidades de encontrar su título.
+  return Array.from(videoMap.values()).map((video, index) => ({
+    ...video,
+    title: video.title || `Video ${index + 1}`
+  }));
 }
 
 // Función para esperar a que YouTube cargue el contenido dinámico
