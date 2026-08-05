@@ -111,20 +111,24 @@ El content script utiliza varias estrategias para detectar enlaces de YouTube:
 ### Escenario 1: Playlist desde un video específico (NUEVO)
 
 1. Ve a una URL como `https://www.youtube.com/watch?v=6YnLB0XbTnI&list=PLangBM27OtEA`
-2. La extensión mostrará automáticamente el ID de la playlist detectada
-3. Solo se extraerán los videos que pertenecen a esa playlist específica
-4. Todas las URLs copiadas incluirán el parámetro `&list=PLangBM27OtEA`
-5. Haz scroll para cargar más videos de la playlist
+2. La extensión mostrará automáticamente el ID de la playlist detectada en la parte superior del popup
+3. Solo se extraerán los videos que pertenecen a esa playlist específica (filtrado automático)
+4. Todas las URLs copiadas incluirán el parámetro `&list=PLangBM27OtEA` para mantener el contexto de la playlist
+5. **Importante**: Haz scroll en la lista lateral para cargar más videos de la playlist antes de copiar
 
 ### Escenario 2: Playlist completa
 
 1. Ve a `https://www.youtube.com/playlist?list=PL...`
-2. Haz scroll hasta cargar todos los videos
+2. Haz scroll hasta cargar todos los videos que necesites
 3. Abre la extensión
-4. Verifica que aparezcan todos los videos
-5. Copia y pega en un editor de texto
+4. Verifica que aparezcan todos los videos con sus títulos reales
+5. Selecciona el formato de copiado deseado:
+   - **Formato NotebookLM**: Para pegar múltiples fuentes separadas por comas
+   - **Una URL por línea**: Para listas simples
+   - **Título + URL**: Para compartir recomendaciones
+6. Copia y pega en el destino deseado
 
-### Escenario 2: Canal de YouTube
+### Escenario 3: Canal de YouTube
 
 1. Ve a `https://www.youtube.com/@NombreDelCanal/videos`
 2. Haz scroll para cargar más videos
@@ -191,14 +195,25 @@ El content script utiliza varias estrategias para detectar enlaces de YouTube:
 
 ## Formato de Salida
 
-### Solo URLs (checkbox desmarcado)
+### Solo URLs (Formato NotebookLM - url1,url2,url3)
+Ideal para pegar múltiples fuentes en NotebookLM. Las URLs se copian separadas por comas, sin espacios ni títulos.
+
+```
+https://www.youtube.com/watch?v=dQw4w9WgXcQ,https://www.youtube.com/watch?v=jNQXAC9IVRw,https://www.youtube.com/watch?v=9bZkp7q19f0
+```
+
+### Solo URLs (Una por línea)
+Copia cada URL en una línea separada. Útil para listas simples o procesamiento posterior.
+
 ```
 https://www.youtube.com/watch?v=dQw4w9WgXcQ
 https://www.youtube.com/watch?v=jNQXAC9IVRw
 https://www.youtube.com/watch?v=9bZkp7q19f0
 ```
 
-### Título + URL (checkbox marcado)
+### Título + URL
+Copia el título del video seguido de la URL en la línea siguiente. Ideal para compartir recomendaciones o documentación.
+
 ```
 Rick Astley - Never Gonna Give You Up
 https://www.youtube.com/watch?v=dQw4w9WgXcQ
@@ -209,6 +224,8 @@ https://www.youtube.com/watch?v=jNQXAC9IVRw
 PSY - GANGNAM STYLE
 https://www.youtube.com/watch?v=9bZkp7q19f0
 ```
+
+**Nota sobre extracción de títulos**: La extensión prioriza el atributo `title` del elemento `span#video-title` (común en playlists), que suele contener el título completo y limpio. Si no está disponible, usa el texto visible del elemento o busca en selectores alternativos para otras vistas (grid, búsqueda, home).
 
 ## Solución de Problemas
 
@@ -228,4 +245,25 @@ https://www.youtube.com/watch?v=9bZkp7q19f0
 
 ## Notas para NotebookLM
 
-El formato de salida (una URL por línea o título + URL) está optimizado para pegar directamente en NotebookLM como fuente. Cada URL será reconocida como una fuente independiente de YouTube.
+### Formato Recomendado para NotebookLM
+
+Para pegar **múltiples videos como fuentes separadas** en NotebookLM, usa el formato **"Solo URLs (Formato NotebookLM)"**:
+
+```
+https://www.youtube.com/watch?v=dQw4w9WgXcQ,https://www.youtube.com/watch?v=jNQXAC9IVRw,https://www.youtube.com/watch?v=9bZkp7q19f0
+```
+
+Este formato copia las URLs separadas por comas, sin espacios ni títulos, exactamente como requiere NotebookLM para reconocer cada URL como una fuente independiente de YouTube.
+
+### Otros Formatos
+
+- **Una URL por línea**: Útil si quieres pegar las fuentes una por una manualmente
+- **Título + URL**: Ideal para documentación o compartir recomendaciones, pero NO es el formato óptimo para NotebookLM
+
+### Cómo Usar en NotebookLM
+
+1. Abre tu proyecto en NotebookLM
+2. Haz clic en "Add source" → "YouTube video"
+3. En lugar de pegar una URL a la vez, usa la extensión para copiar todas las URLs de una playlist
+4. Pega el resultado (formato comma-separated) directamente en el campo de entrada de NotebookLM
+5. NotebookLM reconocerá cada URL como una fuente separada automáticamente

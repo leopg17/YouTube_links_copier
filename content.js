@@ -23,12 +23,12 @@ function normalizeYouTubeUrl(url, targetPlaylistId = null) {
     const urlObj = new URL(url);
     let videoId = null;
     let playlistId = urlObj.searchParams.get('list');
-    
+
     // Manejar diferentes formatos de URL de YouTube
     const hostname = urlObj.hostname.replace('www.', '').replace('m.', '');
     const pathname = urlObj.pathname;
     const searchParams = urlObj.searchParams;
-    
+
     // Formato: youtube.com/watch?v=VIDEO_ID
     if (pathname === '/watch' && searchParams.has('v')) {
       videoId = searchParams.get('v');
@@ -52,68 +52,103 @@ function normalizeYouTubeUrl(url, targetPlaylistId = null) {
     else if (pathname.startsWith('/v/')) {
       videoId = pathname.split('/')[2];
     }
-    
+
     if (videoId && videoId.length >= 11) {
       // Tomar solo los primeros 11 caracteres (ID estándar de YouTube)
       videoId = videoId.substring(0, 11);
-      
+
       // Si estamos filtrando por playlist y este enlace no tiene la playlist correcta
       if (targetPlaylistId && playlistId !== targetPlaylistId) {
         return null;
       }
-      
+
       // Construir URL con playlist si existe
       let normalizedUrl = `https://www.youtube.com/watch?v=${videoId}`;
       if (playlistId) {
         normalizedUrl += `&list=${playlistId}`;
       }
-      
+
       return normalizedUrl;
     }
-    
+
     return null;
   } catch (e) {
     return null;
   }
 }
 
+/**
+ * Extrae el título de un video desde su contenedor.
+ * Prioriza span#video-title con atributo title para playlists.
+ */
+function extractVideoTitle(container) {
+  // Estrategia 1: Buscar el selector específico para playlists (span#video-title)
+  const titleElement = container.querySelector('span#video-title');
+  
+  if (titleElement) {
+    // Priorizar el atributo 'title' (suele ser más limpio y completo)
+    const titleAttr = titleElement.getAttribute('title');
+    if (titleAttr && titleAttr.trim()) {
+      return titleAttr.trim();
+    }
+    // Fallback al texto visible
+    const textContent = titleElement.textContent?.trim();
+    if (textContent) {
+      return textContent;
+    }
+  }
+
+  // Estrategia 2: Fallback para otras vistas (grid, search, home)
+  const fallbackSelectors = [
+    'a#video-title',
+    'h3.yt-lockup-title a',
+    '.yt-simple-endpoint.style-scope.ytd-video-meta-block'
+  ];
+
+  for (const selector of fallbackSelectors) {
+    const el = container.querySelector(selector);
+    if (el) {
+      const text = el.getAttribute('title') || el.textContent;
+      if (text && text.trim()) {
+        return text.trim();
+      }
+    }
+  }
+
+  return null;
+}
+
 // Función para extraer todos los enlaces de YouTube de la página
 function extractYouTubeLinks() {
   const links = document.querySelectorAll('a[href]');
   const videoMap = new Map(); // Usar Map para evitar duplicados
-  
+
   // Obtener el ID de playlist actual si estamos en una playlist
   const currentPlaylistId = getCurrentPlaylistId();
-  
+
   links.forEach(link => {
     const href = link.href;
     if (!href) return;
-    
+
     const normalizedUrl = normalizeYouTubeUrl(href, currentPlaylistId);
     if (!normalizedUrl) return;
-    
-    // Extraer título si está disponible
-    let title = '';
-    const titleElement = link.querySelector('#video-title, .yt-simple-endpoint, a[title]');
-    if (titleElement) {
-      title = titleElement.textContent?.trim() || '';
-    }
-    
-    // Si no hay título en el enlace, buscar en elementos padre
+
+    // Extraer título usando la función dedicada
+    let title = extractVideoTitle(link);
+
+    // Si no hay título en el enlace directo, buscar en elementos padre
     if (!title) {
-      const parentTitle = link.closest('ytd-thumbnail, .video-thumb, .playlist-video')
-        ?.querySelector('#video-title, .yt-simple-endpoint')
-        ?.textContent?.trim();
-      if (parentTitle) {
-        title = parentTitle;
+      const parentContainer = link.closest('ytd-thumbnail, .video-thumb, .playlist-video, ytd-playlist-panel-video-renderer');
+      if (parentContainer) {
+        title = extractVideoTitle(parentContainer);
       }
     }
-    
-    // Si aún no hay título, usar un título genérico
+
+    // Si aún no hay título, usar un título genérico con el índice
     if (!title) {
       title = `Video ${videoMap.size + 1}`;
     }
-    
+
     // Guardar en el mapa (elimina duplicados automáticamente)
     if (!videoMap.has(normalizedUrl)) {
       videoMap.set(normalizedUrl, {
@@ -123,7 +158,7 @@ function extractYouTubeLinks() {
       });
     }
   });
-  
+
   return Array.from(videoMap.values());
 }
 
