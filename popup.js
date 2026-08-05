@@ -4,6 +4,7 @@
  */
 
 let currentVideos = [];
+let currentPlaylistId = null;
 
 // Elementos del DOM
 const videoListEl = document.getElementById('videoList');
@@ -20,6 +21,8 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const copyFromFallbackBtn = document.getElementById('copyFromFallbackBtn');
 const errorMessageEl = document.getElementById('errorMessage');
 const successMessageEl = document.getElementById('successMessage');
+const playlistInfoEl = document.getElementById('playlistInfo');
+const playlistIdDisplayEl = document.getElementById('playlistIdDisplay');
 
 // Inicializar el popup
 document.addEventListener('DOMContentLoaded', () => {
@@ -45,6 +48,11 @@ async function loadVideos() {
     
     if (response && response.success) {
       currentVideos = response.videos || [];
+      currentPlaylistId = response.playlistId || null;
+      
+      // Mostrar información de la playlist si existe
+      updatePlaylistInfo();
+      
       renderVideoList();
       updateStats();
       
@@ -59,6 +67,16 @@ async function loadVideos() {
     console.error('Error loading videos:', error);
     showError('Error de conexión. Asegúrate de estar en una página de YouTube.');
     videoListEl.innerHTML = '<div class="no-videos">Error al conectar con YouTube</div>';
+  }
+}
+
+// Actualizar información de la playlist
+function updatePlaylistInfo() {
+  if (currentPlaylistId) {
+    playlistIdDisplayEl.textContent = currentPlaylistId;
+    playlistInfoEl.classList.remove('hidden');
+  } else {
+    playlistInfoEl.classList.add('hidden');
   }
 }
 

@@ -2,6 +2,8 @@
 
 Extensión de Chrome que detecta videos de YouTube en la página actual, extrae sus URLs, las normaliza, elimina duplicados y permite copiarlas al portapapeles.
 
+**NUEVO**: Ahora soporta filtrado por playlist. Cuando estás en un video con parámetro `list=` (ej: `https://www.youtube.com/watch?v=6YnLB0XbTnI&list=PLangBM27OtEA`), la extensión detecta automáticamente la playlist y solo muestra los videos que pertenecen a ella.
+
 ## Arquitectura
 
 ### Componentes Principales
@@ -106,7 +108,15 @@ El content script utiliza varias estrategias para detectar enlaces de YouTube:
 
 ## Pruebas Manuales
 
-### Escenario 1: Playlist de YouTube
+### Escenario 1: Playlist desde un video específico (NUEVO)
+
+1. Ve a una URL como `https://www.youtube.com/watch?v=6YnLB0XbTnI&list=PLangBM27OtEA`
+2. La extensión mostrará automáticamente el ID de la playlist detectada
+3. Solo se extraerán los videos que pertenecen a esa playlist específica
+4. Todas las URLs copiadas incluirán el parámetro `&list=PLangBM27OtEA`
+5. Haz scroll para cargar más videos de la playlist
+
+### Escenario 2: Playlist completa
 
 1. Ve a `https://www.youtube.com/playlist?list=PL...`
 2. Haz scroll hasta cargar todos los videos
