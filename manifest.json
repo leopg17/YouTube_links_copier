@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Links Copier",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Extrae URLs de videos de YouTube, las normaliza y permite copiarlas al portapapeles",
   "permissions": [
     "activeTab",
