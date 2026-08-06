@@ -84,14 +84,26 @@ function normalizeYouTubeUrl(url, targetPlaylistId = null) {
 function extractVideoTitle(container) {
   if (!container) return null;
 
+  const getAccessibleTitle = (element) => {
+    const title = element.getAttribute?.('title');
+    if (title && title.trim()) return title.trim();
+
+    const ariaLabel = element.getAttribute?.('aria-label');
+    if (!ariaLabel || !ariaLabel.trim()) return null;
+
+    // Los controles del reproductor para ir al video siguiente/anterior también
+    // son enlaces de video, pero su aria-label describe la acción, no el video.
+    // No deben impedir que otra aparición del mismo URL aporte el título real.
+    const normalizedLabel = ariaLabel.trim();
+    const navigationControlPattern = /^(?:siguiente|anterior|next|previous)(?:\s*\([^)]*\))?$/i;
+    return navigationControlPattern.test(normalizedLabel) ? null : normalizedLabel;
+  };
+
   // El enlace puede ser el único nodo que conserva el nombre accesible (por
   // ejemplo, en `aria-label`), aunque no sea uno de los nodos de título que
   // conocemos. Comprobar sus atributos antes de buscar en sus descendientes.
-  const ownTitle = container.getAttribute?.('title') ||
-    container.getAttribute?.('aria-label');
-  if (ownTitle && ownTitle.trim()) {
-    return ownTitle.trim();
-  }
+  const ownTitle = getAccessibleTitle(container);
+  if (ownTitle) return ownTitle;
 
   // YouTube usa el mismo id tanto en enlaces como en spans, según la vista, y
   // las vistas nuevas encapsulan el título en los view models de lockup.
@@ -113,9 +125,7 @@ function extractVideoTitle(container) {
   for (const selector of titleSelectors) {
     const el = container.matches?.(selector) ? container : container.querySelector(selector);
     if (el) {
-      const text = el.getAttribute?.('title') ||
-        el.getAttribute?.('aria-label') ||
-        el.textContent;
+      const text = getAccessibleTitle(el) || el.textContent;
       if (text && text.trim()) {
         return text.trim();
       }

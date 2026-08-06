@@ -131,6 +131,27 @@ test('usa el aria-label del propio enlace aunque no sea un selector de título',
   assert.equal(videos[0].title, 'Título accesible del enlace');
 });
 
+test('ignora el aria-label del control Siguiente y conserva el título real', () => {
+  const href = 'https://www.youtube.com/watch?v=abcdefghijk';
+  const nextControl = createElement({
+    href,
+    attributes: { 'aria-label': 'Siguiente (SHIFT+n)' }
+  });
+  const titleLink = createElement({
+    href,
+    text: 'Stanford CS329A Agentes de IA auto-mejorables | Parte 2',
+    matchingSelectors: ['a.yt-lockup-metadata-view-model__title']
+  });
+
+  const videos = loadContentScript([nextControl, titleLink]);
+
+  assert.equal(videos.length, 1);
+  assert.equal(
+    videos[0].title,
+    'Stanford CS329A Agentes de IA auto-mejorables | Parte 2'
+  );
+});
+
 test('una aparición posterior completa el título pendiente del mismo video', () => {
   const href = 'https://www.youtube.com/watch?v=abcdefghijk';
   const thumbnailWithoutRenderer = createElement({ href });
