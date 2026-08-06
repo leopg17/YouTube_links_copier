@@ -84,14 +84,40 @@ function normalizeYouTubeUrl(url, targetPlaylistId = null) {
 function extractVideoTitle(container) {
   if (!container) return null;
 
-  // YouTube usa el mismo id tanto en enlaces como en spans, según la vista.
-  // `querySelector` no incluye el propio contenedor, por lo que hay que
-  // comprobarlo explícitamente cuando el enlace escaneado ya es el título.
+  const getAccessibleTitle = (element) => {
+    const title = element.getAttribute?.('title');
+    if (title && title.trim()) return title.trim();
+
+    const ariaLabel = element.getAttribute?.('aria-label');
+    if (!ariaLabel || !ariaLabel.trim()) return null;
+
+    // Los controles del reproductor para ir al video siguiente/anterior también
+    // son enlaces de video, pero su aria-label describe la acción, no el video.
+    // No deben impedir que otra aparición del mismo URL aporte el título real.
+    const normalizedLabel = ariaLabel.trim();
+    const navigationControlPattern = /^(?:siguiente|anterior|next|previous)(?:\s*\([^)]*\))?$/i;
+    return navigationControlPattern.test(normalizedLabel) ? null : normalizedLabel;
+  };
+
+  // El enlace puede ser el único nodo que conserva el nombre accesible (por
+  // ejemplo, en `aria-label`), aunque no sea uno de los nodos de título que
+  // conocemos. Comprobar sus atributos antes de buscar en sus descendientes.
+  const ownTitle = getAccessibleTitle(container);
+  if (ownTitle) return ownTitle;
+
+  // YouTube usa el mismo id tanto en enlaces como en spans, según la vista, y
+  // las vistas nuevas encapsulan el título en los view models de lockup.
   const titleSelectors = [
     'a#video-title-link',
     'a#video-title',
     'span#video-title',
     'yt-formatted-string#video-title',
+    'yt-lockup-view-model a.yt-lockup-metadata-view-model__title',
+    'yt-lockup-view-model .yt-lockup-metadata-view-model__title',
+    'yt-lockup-metadata-view-model a.yt-lockup-metadata-view-model__title',
+    'yt-lockup-metadata-view-model .yt-lockup-metadata-view-model__title',
+    'a.yt-lockup-metadata-view-model__title',
+    '.yt-lockup-metadata-view-model__title',
     'h3.yt-lockup-title a',
     '.yt-simple-endpoint.style-scope.ytd-video-meta-block'
   ];
@@ -99,7 +125,7 @@ function extractVideoTitle(container) {
   for (const selector of titleSelectors) {
     const el = container.matches?.(selector) ? container : container.querySelector(selector);
     if (el) {
-      const text = el.getAttribute('title') || el.textContent || el.getAttribute('aria-label');
+      const text = getAccessibleTitle(el) || el.textContent;
       if (text && text.trim()) {
         return text.trim();
       }
@@ -137,6 +163,9 @@ function extractYouTubeLinks() {
         'ytd-compact-video-renderer',
         'ytd-playlist-video-renderer',
         'ytd-playlist-panel-video-renderer',
+        'yt-playlist-panel-video-renderer',
+        'yt-lockup-view-model',
+        'yt-lockup-metadata-view-model',
         'ytd-reel-item-renderer',
         '.playlist-video',
         '.video-thumb'
